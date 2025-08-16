@@ -1,8 +1,12 @@
 # Homestay
 
+![Admin](imgs/homestay_admin_view.png)
+
 Homestay is a self-hostable, customizable booking app for you or your friend's
 properties. It's designed to be simple host, modify, or extend to your specific
 needs. 
+
+![Admin](imgs/homestay_admin_table_view.png)
 
 # Features
 * PIN-based login
@@ -12,6 +16,8 @@ needs.
 * Separate login pages for booking and administering bookings
 * Email notifications for admins and bookees
 * Simple SQLite backend storage
+
+![Admin](imgs/homestay_admin_email_template.png)
 
 # Building
 ```bash
