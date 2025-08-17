@@ -48,3 +48,5 @@ the following principles:
 Readers are encouraged to critically evaluate the content of this document,
 considering the potential risks and limitations associated with LLM-generated
 material. 
+
+For more information, see https://colinmilhaupt.com/posts/responsible-llm-use/
