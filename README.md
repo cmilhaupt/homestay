@@ -28,7 +28,7 @@ needs.
 
 ![Admin](imgs/homestay_admin_email_template.png)
 
-# Building
+# Production Setup
 ```bash
 cp .env.example .env
 sed -i "s/SECRET_KEY=change-me-in-production/SECRET_KEY=$(uuidgen)/" .env
