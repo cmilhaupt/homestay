@@ -1,19 +1,16 @@
 services:
   web:
     build: .
-    expose:
-      - "${PORT:-80}"
     ports:
       - "8080:80"
     environment:
       - FLASK_APP=src/app.py
       - FLASK_ENV=${FLASK_ENV:-production}
-      - VIRTUAL_HOST=${VIRTUAL_HOST}
-      - LETSENCRYPT_HOST=${VIRTUAL_HOST}
       - SECRET_KEY=${SECRET_KEY}
     volumes:
       - ./instance:/app/instance
     container_name: ${CONTAINER_NAME:-my_container}
+    restart: on-failure
 
 networks:
   default:

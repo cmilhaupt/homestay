@@ -3,5 +3,4 @@
 !.env.example
 venv
 **/__pycache__
-instance/*.sqlite
-instance/*.db
+instance/*

@@ -30,6 +30,14 @@ needs.
 
 # Building
 ```bash
+cp .env.example .env
+sed -i "s/SECRET_KEY=change-me-in-production/SECRET_KEY=$(uuidgen)/" .env
+# To disable email sending if you don't have an Email Service Provider setup
+sed -i "s/SEND_EMAILS=True/SEND_EMAILS=False/" .env
+# create a network if applicable
+export DOCKER_NETWORK_NAME=homestay_net
+docker network create "$DOCKER_NETWORK_NAME"
+# Start the app
 docker compose build
 docker up -d
 ```
