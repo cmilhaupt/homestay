@@ -3,6 +3,8 @@ services:
     build: .
     expose:
       - "${PORT:-80}"
+    ports:
+      - "8080:80"
     environment:
       - FLASK_APP=src/app.py
       - FLASK_ENV=${FLASK_ENV:-production}
