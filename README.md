@@ -9,13 +9,22 @@ needs.
 ![Admin](imgs/homestay_admin_table_view.png)
 
 # Features
-* PIN-based login
-* Rate-limiting on all endpoints
-* Availability display only for bookees
-* Full booking details for admins
-* Separate login pages for booking and administering bookings
-* Email notifications for admins and bookees
-* Simple SQLite backend storage
+* Interactive Calendar Interface - Visual booking calendar using FullCalendar with month/week views for easy
+  date selection and booking management
+* Guest Booking System - Simple booking form allowing guests to reserve dates with automatic overlap prevention
+  and email confirmations
+* Admin Dashboard - Comprehensive administrative interface for managing all bookings, blocked dates, and system
+  settings
+* Date Blocking Functionality - Admin ability to block specific date ranges (maintenance, owner unavailable,
+  etc.) that appear as "booked" to guests
+* Dual User Authentication - Separate login systems for regular users (guest access code) and administrators
+  with role-based permissions
+* Email Notifications - Automated welcome emails to guests and booking notifications to owners with customizable
+   templates
+* Rate Limiting & Security - Built-in protection against spam and abuse with IP-based rate limiting
+* Responsive Design - Mobile-friendly interface using Tailwind CSS that works across all devices
+* Data Management - Complete CRUD operations for bookings and blocked dates with simple SQLite database storage for easy backup and restore operations
+* Docker Deployment - Containerized application with Docker support for easy deployment and scaling
 
 ![Admin](imgs/homestay_admin_email_template.png)
 
