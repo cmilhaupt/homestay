@@ -52,6 +52,9 @@ function initializeCalendar(elementId, options = {}) {
                 html: '<div class="fc-content"><span>Booked</span></div>'
             };
         },
+        eventDidMount: options.eventDidMount || function(info) {
+            // Default event styling - no special handling needed for regular users
+        },
         ...options
     });
     calendar.render();
@@ -76,23 +79,53 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (isAdmin) {
         initializeCalendar('adminCalendar', {
-            eventColor: '#EF4444',
             eventContent: function(arg) {
+                const isBlocked = arg.event.extendedProps.type === 'blocked';
+                const isBooking = arg.event.extendedProps.type === 'booking';
+                
+                if (isBlocked) {
+                    return {
+                        html: `
+                            <div class="p-2 bg-gray-500 text-white">
+                                <div class="font-semibold">Blocked</div>
+                                <div class="text-xs">${arg.event.extendedProps.reason || 'Owner unavailable'}</div>
+                            </div>
+                        `
+                    };
+                } else if (isBooking) {
+                    return {
+                        html: `
+                            <div class="p-2 bg-red-500 text-white">
+                                <div class="font-semibold">${arg.event.extendedProps.guest_name || 'Booked'}</div>
+                                <div class="text-xs">${arg.event.extendedProps.guest_email || ''}</div>
+                            </div>
+                        `
+                    };
+                }
+                
                 return {
-                    html: `
-                        <div class="p-2">
-                            <div class="font-semibold">${arg.event.extendedProps.guest_name || 'Booked'}</div>
-                            <div class="text-xs">${arg.event.extendedProps.guest_email || ''}</div>
-                        </div>
-                    `
+                    html: '<div class="p-2"><div class="font-semibold">Booked</div></div>'
                 };
             },
             eventDidMount: function(info) {
-                // Add tooltip showing booking details
-                const startDate = info.event.start.toLocaleDateString();
-                const endDate = info.event.end.toLocaleDateString();
-                const guestName = info.event.extendedProps.guest_name || 'Guest';
-                info.el.title = `${guestName}: ${startDate} to ${endDate}`;
+                const isBlocked = info.event.extendedProps.type === 'blocked';
+                const isBooking = info.event.extendedProps.type === 'booking';
+                
+                if (isBlocked) {
+                    const startDate = info.event.start.toLocaleDateString();
+                    const endDate = info.event.end.toLocaleDateString();
+                    const reason = info.event.extendedProps.reason || 'Owner unavailable';
+                    info.el.title = `Blocked: ${reason} (${startDate} to ${endDate})`;
+                    info.el.style.backgroundColor = '#6B7280';
+                    info.el.style.borderColor = '#6B7280';
+                } else if (isBooking) {
+                    const startDate = info.event.start.toLocaleDateString();
+                    const endDate = info.event.end.toLocaleDateString();
+                    const guestName = info.event.extendedProps.guest_name || 'Guest';
+                    info.el.title = `${guestName}: ${startDate} to ${endDate}`;
+                    info.el.style.backgroundColor = '#EF4444';
+                    info.el.style.borderColor = '#EF4444';
+                }
             }
         });
     } else {

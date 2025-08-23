@@ -33,6 +33,10 @@
                         class="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors">
                     New Booking
                 </button>
+                <button onclick="showBlockModal()" 
+                        class="bg-gray-600 text-white px-6 py-2 rounded-md hover:bg-gray-700 transition-colors">
+                    Block Dates
+                </button>
                 <a href="{{ url_for('auth.logout') }}" 
                    class="bg-red-600 text-white px-6 py-2 rounded-md hover:bg-red-700 transition-colors text-center">
                     Logout
@@ -95,14 +99,15 @@
                 </div>
             </div>
 
-            <!-- Bookings Table Section -->
-            <h2 class="text-xl font-semibold text-gray-700 mt-8">All Bookings</h2>
-            {% if bookings %}
+            <!-- Bookings and Blocked Dates Section -->
+            <h2 class="text-xl font-semibold text-gray-700 mt-8">All Bookings and Blocked Dates</h2>
+            {% if bookings or blocked_dates %}
                 <div class="w-full">
                     <table id="bookingsTable" class="w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                                <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                                <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name/Reason</th>
                                 <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">Email</th>
                                 <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">Dates</th>
                                 <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">Created</th>
@@ -112,6 +117,11 @@
                         <tbody class="bg-white divide-y divide-gray-200">
                             {% for booking in bookings %}
                             <tr class="hover:bg-gray-50">
+                                <td class="px-2 py-3 text-sm">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                        Booking
+                                    </span>
+                                </td>
                                 <td class="px-2 py-3 text-sm text-gray-900">{{ booking.guest_name }}</td>
                                 <td class="px-2 py-3 text-sm text-gray-900 hidden sm:table-cell">{{ booking.guest_email }}</td>
                                 <td class="px-2 py-3 text-sm text-gray-900">
@@ -128,11 +138,34 @@
                                 </td>
                             </tr>
                             {% endfor %}
+                            {% for blocked in blocked_dates %}
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-2 py-3 text-sm">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                        Blocked
+                                    </span>
+                                </td>
+                                <td class="px-2 py-3 text-sm text-gray-900">{{ blocked.reason or 'Owner unavailable' }}</td>
+                                <td class="px-2 py-3 text-sm text-gray-500 hidden sm:table-cell">-</td>
+                                <td class="px-2 py-3 text-sm text-gray-900">
+                                    <div>{{ blocked.start_date.strftime('%Y-%m-%d') }}</div>
+                                    <div class="text-xs text-gray-500">to</div>
+                                    <div>{{ blocked.end_date.strftime('%Y-%m-%d') }}</div>
+                                </td>
+                                <td class="px-2 py-3 text-sm text-gray-900 hidden sm:table-cell">{{ blocked.created_at.strftime('%Y-%m-%d') }}</td>
+                                <td class="px-2 py-3 text-sm text-gray-900">
+                                    <button onclick="confirmDeleteBlocked({{ blocked.id }}, '{{ blocked.reason or 'Owner unavailable' }}')"
+                                            class="text-red-600 hover:text-red-900">
+                                        Delete
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
                         </tbody>
                     </table>
                 </div>
             {% else %}
-                <p class="text-gray-500 text-center py-4">No bookings found.</p>
+                <p class="text-gray-500 text-center py-4">No bookings or blocked dates found.</p>
             {% endif %}
 
             <!-- Access Code Management Section -->
@@ -254,6 +287,41 @@
                     Delete
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- Block Dates Modal -->
+    <div id="blockModal" class="hidden fixed inset-0 bg-black bg-opacity-75 backdrop-blur-sm overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <h3 class="text-lg font-bold mb-4">Block Dates</h3>
+            <form id="blockForm" class="space-y-4" onsubmit="event.preventDefault(); createBlockedDate();">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Start Date</label>
+                    <input type="date" id="blockStartDate" name="start_date" required
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">End Date</label>
+                    <input type="date" id="blockEndDate" name="end_date" required
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Reason (Optional)</label>
+                    <input type="text" id="blockReason" name="reason" placeholder="e.g., Owner unavailable"
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                </div>
+                <div id="blockError" class="hidden text-red-600 text-sm p-2 mb-4 bg-red-50 rounded"></div>
+                <div class="flex justify-end gap-4">
+                    <button type="button" onclick="hideBlockModal()"
+                            class="bg-gray-200 px-4 py-2 rounded-md hover:bg-gray-300">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                            class="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700">
+                        Block Dates
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 {% endblock %}

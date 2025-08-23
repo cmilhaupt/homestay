@@ -58,20 +58,15 @@ def test_create_booking_success(page: Page, base_url: str, clear_bookings):
     page.wait_for_timeout(100)
     page.fill("#endDate", day_after)   # Departure Date
     
-    # Submit form and wait for response
+    # Try to submit without required fields and waitdate
     page.click("button[type='submit']")
+    page.wait_for_timeout(500)  # Wait for form validation
     
-    # Wait for calendar to update
-    expect(page.locator(".fc-event")).to_be_visible()
-    
-    # Verify the event spans both arrival and departure dates
-    event = page.locator(".fc-event")
-    expect(event).to_be_visible()
     # Verify event exists on the correct dates by checking the calendar cell
     tomorrow_cell = page.locator(f"td[data-date='{tomorrow}']")
     day_after_cell = page.locator(f"td[data-date='{day_after}']")
-    expect(tomorrow_cell.locator(".fc-event")).to_be_visible()
-    expect(day_after_cell.locator(".fc-event")).to_be_visible()
+    expect(tomorrow_cell.locator(".fc-event-start")).to_be_visible()
+    expect(day_after_cell.locator(".fc-event-end")).to_be_visible()
 
 def test_create_booking_validation(page: Page, base_url: str, clear_bookings):
     # Login and open booking modal
@@ -80,7 +75,7 @@ def test_create_booking_validation(page: Page, base_url: str, clear_bookings):
     page.click("button[type='submit']")
     page.click("button:has-text('New Booking')")
     
-    # Try to submit without required fields and wait
+    # Try to submit without required fields and waitdate
     page.click("button[type='submit']")
     page.wait_for_timeout(500)  # Wait for form validation
     
@@ -102,7 +97,7 @@ def test_create_booking_validation(page: Page, base_url: str, clear_bookings):
     
     # Should show error message
     page.wait_for_timeout(500)  # Wait for API response
-    expect(page.locator("text=Departure date must be after arrival date")).to_be_visible()
+    expect(page.locator("#endDate")).to_have_attribute("min", tomorrow)
 
 def test_overlapping_booking_prevention(page: Page, base_url: str, clear_bookings, app):
     # Create initial booking

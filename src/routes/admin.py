@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, current_app, request, jsonify
 from flask_login import login_required, current_user
-from src.models import Booking, User
+from src.models import Booking, User, BlockedDate
 from src.database import db
 from functools import wraps
 from datetime import datetime, UTC
@@ -45,8 +45,9 @@ def update_welcome_template():
 @admin_required
 def dashboard():
     bookings = Booking.query.order_by(Booking.start_date.desc()).all()
+    blocked_dates = BlockedDate.query.order_by(BlockedDate.start_date.desc()).all()
     
-    # Find the next upcoming booking
+    # Find the next upcoming booking (excluding blocked dates)
     now = datetime.now(UTC)
     next_booking = Booking.query.filter(
         Booking.start_date > now
@@ -75,6 +76,7 @@ def dashboard():
     
     return render_template('admin/dashboard.html', 
                          bookings=bookings,
+                         blocked_dates=blocked_dates,
                          next_guest_info=next_guest_info,
                          current_code=current_code,
                          welcome_template=welcome_template)

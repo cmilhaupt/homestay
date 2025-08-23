@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request, current_app
 from flask_login import login_required, current_user
 from datetime import datetime
-from src.models import Booking
+from src.models import Booking, BlockedDate
 from src.database import db
 from functools import wraps
 from src.rate_limiting import limiter
@@ -34,12 +34,34 @@ def check_rate_limit():
 @login_required
 def get_bookings():
     bookings = Booking.query.all()
-    return jsonify([{
-        'id': booking.id,
-        'start': booking.start_date.isoformat(),
-        'end': booking.end_date.isoformat(),
-        'title': 'Booked'
-    } for booking in bookings])
+    blocked_dates = BlockedDate.query.all()
+    
+    events = []
+    
+    # Add regular bookings
+    for booking in bookings:
+        events.append({
+            'id': booking.id,
+            'start': booking.start_date.isoformat(),
+            'end': booking.end_date.isoformat(),
+            'title': 'Booked',
+            'type': 'booking',
+            'guest_name': booking.guest_name,
+            'guest_email': booking.guest_email
+        })
+    
+    # Add blocked dates (appear the same to regular users)
+    for blocked in blocked_dates:
+        events.append({
+            'id': blocked.id,
+            'start': blocked.start_date.isoformat(),
+            'end': blocked.end_date.isoformat(),
+            'title': 'Booked',
+            'type': 'blocked',
+            'reason': blocked.reason
+        })
+    
+    return jsonify(events)
 
 @bp.route('/bookings/<int:booking_id>', methods=['DELETE'])
 @login_required
@@ -71,7 +93,7 @@ def create_booking():
         return jsonify({'error': 'Departure date must be after arrival date'}), 400
     
     # Check for overlapping bookings
-    overlapping = Booking.query.filter(
+    overlapping_booking = Booking.query.filter(
         db.or_(
             db.and_(Booking.start_date <= start_date, Booking.end_date >= start_date),
             db.and_(Booking.start_date <= end_date, Booking.end_date >= end_date),
@@ -79,7 +101,16 @@ def create_booking():
         )
     ).first()
     
-    if overlapping:
+    # Check for overlapping blocked dates
+    overlapping_blocked = BlockedDate.query.filter(
+        db.or_(
+            db.and_(BlockedDate.start_date <= start_date, BlockedDate.end_date >= start_date),
+            db.and_(BlockedDate.start_date <= end_date, BlockedDate.end_date >= end_date),
+            db.and_(BlockedDate.start_date >= start_date, BlockedDate.end_date <= end_date)
+        )
+    ).first()
+    
+    if overlapping_booking or overlapping_blocked:
         return jsonify({'error': 'Selected dates overlap with existing booking'}), 400
     
     # Create new booking
@@ -127,3 +158,67 @@ def update_access_code():
     current_app.config['DEFAULT_ACCESS_CODE'] = data['code']
     
     return jsonify({'message': 'Access code updated successfully'}), 200
+
+@bp.route('/blocked-dates', methods=['POST'])
+@login_required
+@admin_required
+def create_blocked_date():
+    data = request.get_json()
+    
+    # Validate required fields
+    required_fields = ['start_date', 'end_date']
+    if not all(field in data for field in required_fields):
+        return jsonify({'error': 'Missing required fields'}), 400
+    
+    # Parse dates
+    try:
+        start_date = datetime.fromisoformat(data['start_date'])
+        end_date = datetime.fromisoformat(data['end_date'])
+    except ValueError:
+        return jsonify({'error': 'Invalid date format'}), 400
+    
+    # Check for date validity
+    if end_date <= start_date:
+        return jsonify({'error': 'End date must be after start date'}), 400
+    
+    # Check for overlapping bookings
+    overlapping_booking = Booking.query.filter(
+        db.or_(
+            db.and_(Booking.start_date <= start_date, Booking.end_date >= start_date),
+            db.and_(Booking.start_date <= end_date, Booking.end_date >= end_date),
+            db.and_(Booking.start_date >= start_date, Booking.end_date <= end_date)
+        )
+    ).first()
+    
+    # Check for overlapping blocked dates
+    overlapping_blocked = BlockedDate.query.filter(
+        db.or_(
+            db.and_(BlockedDate.start_date <= start_date, BlockedDate.end_date >= start_date),
+            db.and_(BlockedDate.start_date <= end_date, BlockedDate.end_date >= end_date),
+            db.and_(BlockedDate.start_date >= start_date, BlockedDate.end_date <= end_date)
+        )
+    ).first()
+    
+    if overlapping_booking or overlapping_blocked:
+        return jsonify({'error': 'Selected dates overlap with existing booking or blocked period'}), 400
+    
+    # Create new blocked date
+    blocked_date = BlockedDate(
+        start_date=start_date,
+        end_date=end_date,
+        reason=data.get('reason', '')
+    )
+    
+    db.session.add(blocked_date)
+    db.session.commit()
+    
+    return jsonify({'message': 'Blocked date created successfully'}), 201
+
+@bp.route('/blocked-dates/<int:blocked_id>', methods=['DELETE'])
+@login_required
+@admin_required
+def delete_blocked_date(blocked_id):
+    blocked_date = BlockedDate.query.get_or_404(blocked_id)
+    db.session.delete(blocked_date)
+    db.session.commit()
+    return jsonify({'message': 'Blocked date deleted successfully'}), 200

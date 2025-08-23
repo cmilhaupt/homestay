@@ -1,15 +1,26 @@
 let deleteBookingId = null;
+let deleteBlockedId = null;
 
 function confirmDelete(bookingId, guestName) {
     deleteBookingId = bookingId;
+    deleteBlockedId = null;
     document.getElementById('deleteConfirmText').textContent = 
         `Are you sure you want to delete the booking for ${guestName}?`;
+    document.getElementById('deleteModal').classList.remove('hidden');
+}
+
+function confirmDeleteBlocked(blockedId, reason) {
+    deleteBlockedId = blockedId;
+    deleteBookingId = null;
+    document.getElementById('deleteConfirmText').textContent = 
+        `Are you sure you want to delete the blocked period: ${reason || 'Owner unavailable'}?`;
     document.getElementById('deleteModal').classList.remove('hidden');
 }
 
 function hideDeleteModal() {
     document.getElementById('deleteModal').classList.add('hidden');
     deleteBookingId = null;
+    deleteBlockedId = null;
 }
 
 async function updateWelcomeTemplate() {
@@ -50,12 +61,19 @@ async function updateWelcomeTemplate() {
 }
 
 async function executeDelete() {
-    if (!deleteBookingId) return;
+    if (!deleteBookingId && !deleteBlockedId) return;
     
     try {
-        const response = await fetch(`/api/bookings/${deleteBookingId}`, {
-            method: 'DELETE',
-        });
+        let response;
+        if (deleteBookingId) {
+            response = await fetch(`/api/bookings/${deleteBookingId}`, {
+                method: 'DELETE',
+            });
+        } else if (deleteBlockedId) {
+            response = await fetch(`/api/blocked-dates/${deleteBlockedId}`, {
+                method: 'DELETE',
+            });
+        }
 
         if (response.ok) {
             window.location.reload();
@@ -96,5 +114,63 @@ async function updateAccessCode() {
         }
     } catch (error) {
         alert('An error occurred. Please try again.');
+    }
+}
+
+function showBlockModal() {
+    document.getElementById('blockModal').classList.remove('hidden');
+    document.getElementById('blockError').classList.add('hidden');
+}
+
+function hideBlockModal() {
+    document.getElementById('blockModal').classList.add('hidden');
+    document.getElementById('blockError').classList.add('hidden');
+    // Reset form
+    document.getElementById('blockForm').reset();
+}
+
+async function createBlockedDate() {
+    const startDate = document.getElementById('blockStartDate').value;
+    const endDate = document.getElementById('blockEndDate').value;
+    const reason = document.getElementById('blockReason').value;
+    
+    if (!startDate || !endDate) {
+        document.getElementById('blockError').textContent = 'Please select both start and end dates';
+        document.getElementById('blockError').classList.remove('hidden');
+        return;
+    }
+    
+    if (endDate <= startDate) {
+        document.getElementById('blockError').textContent = 'End date must be after start date';
+        document.getElementById('blockError').classList.remove('hidden');
+        return;
+    }
+    
+    document.getElementById('blockError').classList.add('hidden');
+    
+    try {
+        const response = await fetch('/api/blocked-dates', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                start_date: startDate,
+                end_date: endDate,
+                reason: reason
+            })
+        });
+
+        if (response.ok) {
+            hideBlockModal();
+            window.location.reload();
+        } else {
+            const data = await response.json();
+            document.getElementById('blockError').textContent = data.error || 'Failed to block dates. Please try again.';
+            document.getElementById('blockError').classList.remove('hidden');
+        }
+    } catch (error) {
+        document.getElementById('blockError').textContent = 'An error occurred. Please try again.';
+        document.getElementById('blockError').classList.remove('hidden');
     }
 }
